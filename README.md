@@ -6,12 +6,12 @@ Production-ready NestJS 11 backend for ParentHalo, built with Node.js 22, TypeSc
 
 - NestJS 11 with modular Clean Architecture folders
 - PostgreSQL with Prisma ORM
-- ConfigModule with typed environment validation
+- ConfigModule with Joi environment validation
 - DTO validation via `class-validator` and `class-transformer`
 - Helmet, CORS, compression, throttling, request logging, and global exception handling
 - Winston structured logging
 - Swagger/OpenAPI at `/docs`
-- Health checks at `/api/v1/health`
+- Health checks at `/api/v1/health`, `/api/v1/health/live`, and `/api/v1/health/ready`
 - Jest and Supertest
 - ESLint, Prettier, Husky, and lint-staged
 - Docker and Docker Compose

@@ -1,13 +1,18 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { HealthCheckService, PrismaHealthIndicator } from '@nestjs/terminus';
+import {
+  DiskHealthIndicator,
+  HealthCheckService,
+  MemoryHealthIndicator,
+  PrismaHealthIndicator,
+} from '@nestjs/terminus';
 import { Server } from 'http';
 import request from 'supertest';
 import { ApiResponseInterceptor } from '../src/common/interceptors/api-response.interceptor';
 import { configuration } from '../src/config/configuration';
-import { validateEnvironment } from '../src/config/env.validation';
+import { validationSchema } from '../src/config/env.validation';
 import { PrismaService } from '../src/infrastructure/database/prisma/prisma.service';
 import { HealthController } from '../src/modules/health/health.controller';
 
@@ -23,7 +28,7 @@ describe('HealthController (e2e)', () => {
         ConfigModule.forRoot({
           isGlobal: true,
           load: [configuration],
-          validate: validateEnvironment,
+          validationSchema,
         }),
       ],
       controllers: [HealthController],
@@ -40,6 +45,18 @@ describe('HealthController (e2e)', () => {
           },
         },
         {
+          provide: DiskHealthIndicator,
+          useValue: {
+            checkStorage: jest.fn().mockResolvedValue({ storage: { status: 'up' } }),
+          },
+        },
+        {
+          provide: MemoryHealthIndicator,
+          useValue: {
+            checkHeap: jest.fn().mockResolvedValue({ memory_heap: { status: 'up' } }),
+          },
+        },
+        {
           provide: PrismaHealthIndicator,
           useValue: {
             pingCheck: jest.fn().mockResolvedValue({ database: { status: 'up' } }),
@@ -53,7 +70,8 @@ describe('HealthController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
+    app.setGlobalPrefix('api');
+    app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     app.useGlobalInterceptors(new ApiResponseInterceptor(app.get(Reflector)));
     await app.init();

@@ -2,6 +2,7 @@ import {
   ClassSerializerInterceptor,
   LoggerService,
   ValidationPipe,
+  VersioningType,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
@@ -28,6 +29,10 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
   app.setGlobalPrefix(config.get('apiPrefix', { infer: true }));
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: config.get('apiVersion', { infer: true }),
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -41,11 +46,12 @@ async function bootstrap(): Promise<void> {
     new ClassSerializerInterceptor(reflector),
     new ApiResponseInterceptor(reflector),
   );
+  app.enableShutdownHooks();
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('ParentHalo API')
     .setDescription('ParentHalo backend API')
-    .setVersion('0.1.0')
+    .setVersion(config.get('apiVersion', { infer: true }))
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);

@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"{src,test,prisma}/**/*.{ts,js,json,md,prisma}\" \"*.{json,md,yml,yaml}\" \".github/**/*.yml\"",
+    "format": "prettier --write \"{src,test}/**/*.{ts,js,json,md}\" \"*.{json,md,yml,yaml}\" \".github/**/*.yml\" && prisma format",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "lint:fix": "npm run lint -- --fix",
     "start": "nest start",
@@ -41,7 +41,8 @@
     "nest-winston": "^1.10.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "joi": "^17.13.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.29.0",
@@ -72,10 +73,13 @@
   },
   "lint-staged": {
     "*.{ts,js}": [
-      "eslint --fix",
+      "eslint --cache --fix",
       "prettier --write"
     ],
-    "*.{json,md,yml,yaml,prisma}": [
+    "*.prisma": [
+      "prisma format"
+    ],
+    "*.{json,md,yml,yaml}": [
       "prettier --write"
     ]
   },

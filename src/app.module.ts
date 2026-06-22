@@ -1,9 +1,11 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { WinstonModule } from 'nest-winston';
-import { configuration } from './config/configuration';
-import { validateEnvironment } from './config/env.validation';
+import { AppConfig, configuration } from './config/configuration';
+import { validationSchema } from './config/env.validation';
+import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { HealthModule } from './modules/health/health.module';
 import { PrismaModule } from './infrastructure/database/prisma/prisma.module';
@@ -15,24 +17,38 @@ import { createWinstonOptions } from './infrastructure/logging/winston.config';
       isGlobal: true,
       cache: true,
       load: [configuration],
-      validate: validateEnvironment,
+      validationSchema,
+      validationOptions: {
+        abortEarly: false,
+      },
     }),
     WinstonModule.forRootAsync({
       inject: [],
       useFactory: createWinstonOptions,
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: Number(process.env.RATE_LIMIT_TTL ?? 60) * 1000,
-        limit: Number(process.env.RATE_LIMIT_LIMIT ?? 100),
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<AppConfig, true>) => ({
+        throttlers: [
+          {
+            ttl: config.get('rateLimitTtl', { infer: true }) * 1000,
+            limit: config.get('rateLimitLimit', { infer: true }),
+          },
+        ],
+      }),
+    }),
     PrismaModule,
     HealthModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(RequestLoggingMiddleware).forRoutes('*');
+    consumer.apply(CorrelationIdMiddleware, RequestLoggingMiddleware).forRoutes('*');
   }
 }
